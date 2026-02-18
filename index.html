@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sprite Platform Demo</title>
+<title>Platformer Engine</title>
 <style>
   body { margin:0; background:#222; }
   canvas { background:#87CEEB; display:block; margin:auto; }
@@ -12,107 +12,7 @@
 
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+<script type="module" src="./src/main.js"></script>
 
-// ---- HERO FRAMES ----
-const frames = [];
-for (let i = 1; i <= 3; i++) {
-    const img = new Image();
-    img.src = "hero" + i + ".png";
-    frames.push(img);
-}
-
-let posX = 100;
-let posY = 250;
-let velocityY = 0;
-const gravity = 0.7;
-const groundY = 250;
-
-let rightPressed = false;
-let leftPressed = false;
-let onGround = true;
-
-let frameIndex = 0;
-let frameTimer = 0;
-const frameSpeed = 8;
-
-// ---- INPUT ----
-document.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight") rightPressed = true;
-    if (e.key === "ArrowLeft") leftPressed = true;
-
-    if ((e.key === "ArrowUp" || e.key === " ") && onGround) {
-        velocityY = -20;
-        onGround = false;
-    }
-});
-
-document.addEventListener("keyup", e => {
-    if (e.key === "ArrowRight") rightPressed = false;
-    if (e.key === "ArrowLeft") leftPressed = false;
-});
-
-// ---- UPDATE ----
-function update() {
-
-    if (rightPressed && !leftPressed) posX += 4;
-    if (leftPressed && !rightPressed) posX -= 4;
-
-    velocityY += gravity;
-    posY += velocityY;
-
-    if (posY >= groundY) {
-        posY = groundY;
-        velocityY = 0;
-        onGround = true;
-    }
-
-    if (posX < 0) posX = 0;
-    if (posX > canvas.width - 80) posX = canvas.width - 80;
-
-    // Animasyon
-    if ((rightPressed || leftPressed) && onGround) {
-        frameTimer++;
-        if (frameTimer >= frameSpeed) {
-            frameIndex = (frameIndex + 1) % frames.length;
-            frameTimer = 0;
-        }
-    } else {
-        frameIndex = 0;
-    }
-}
-
-// ---- DRAW ----
-function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // Zemin
-    ctx.fillStyle = "green";
-    ctx.fillRect(0, 350, canvas.width, 50);
-
-    if (frames[frameIndex].complete) {
-        ctx.drawImage(
-            frames[frameIndex],
-            Math.floor(posX),
-            Math.floor(posY),
-            80,
-            100
-        );
-    }
-}
-
-// ---- GAME LOOP ----
-function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
-
-</script>
 </body>
 </html>
