@@ -15,16 +15,18 @@ export class Game {
 
         this.player = {
             x: 100,
-            y: 250,
+            y: 350,
             vx: 0,
             vy: 0,
+            width: 50,
+            height: 50,
             speed: 4,
             jumpForce: -15,
             onGround: true
         };
 
         this.gravity = 0.6;
-        this.groundY = 250;
+        this.groundY = 350;
 
         this.setupInput();
     }
@@ -83,8 +85,9 @@ export class Game {
         this.player.vy += this.gravity;
         this.player.y += this.player.vy;
 
-        if (this.player.y >= this.groundY) {
-            this.player.y = this.groundY;
+        // Collision with ground
+        if (this.player.y + this.player.height >= this.groundY) {
+            this.player.y = this.groundY - this.player.height;
             this.player.vy = 0;
             this.player.onGround = true;
         }
@@ -99,6 +102,6 @@ export class Game {
 
         // Player
         this.ctx.fillStyle = "blue";
-        this.ctx.fillRect(this.player.x, this.player.y, 50, 50);
+        this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
     }
 }
