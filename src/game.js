@@ -110,7 +110,7 @@ export class Game {
         this.constants = {
             gravity: 0.35,
             groundY: 350,
-            jumpForce: -8
+            jumpForce: -13
         };
 
         this.movement = new PlayerMovement();
