@@ -1,6 +1,6 @@
 class PlayerMovement {
     constructor() {
-        this.acceleration = 0.8;
+        this.acceleration = 1.5;
         this.maxSpeed = 8;
         this.friction = 0.85;
         this.maxVelocity = 15;
@@ -108,9 +108,9 @@ export class Game {
         };
 
         this.constants = {
-            gravity: 0.6,
+            gravity: 0.35,
             groundY: 350,
-            jumpForce: -12
+            jumpForce: -8
         };
 
         this.movement = new PlayerMovement();
