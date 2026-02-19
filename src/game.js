@@ -1,3 +1,80 @@
+class PlayerMovement {
+    constructor() {
+        this.acceleration = 0.8;
+        this.maxSpeed = 8;
+        this.friction = 0.85;
+        this.maxVelocity = 15;
+    }
+
+    applyMovementInput(player, keys, delta) {
+        let directionInput = 0;
+        if (keys.left) directionInput -= 1;
+        if (keys.right) directionInput += 1;
+
+        if (directionInput !== 0) {
+            player.vx += directionInput * this.acceleration;
+            player.vx = Math.max(-this.maxSpeed, Math.min(this.maxSpeed, player.vx));
+        } else {
+            player.vx *= this.friction;
+            if (Math.abs(player.vx) < 0.1) player.vx = 0;
+        }
+
+        player.x += player.vx;
+    }
+
+    applyGravity(player, gravity, delta) {
+        player.vy += gravity;
+        player.vy = Math.min(player.vy, this.maxVelocity);
+        player.y += player.vy;
+    }
+
+    applyJump(player, keys, jumpState, jumpForce) {
+        if (keys.jump && !jumpState.jumpPressed) {
+            jumpState.jumpPressed = true;
+            jumpState.jumpBufferTime = 100;
+        }
+
+        if (!keys.jump) {
+            jumpState.jumpPressed = false;
+            jumpState.maxJumpForce = jumpForce;
+        }
+
+        if (jumpState.jumpBufferTime > 0 && (player.onGround || jumpState.coyoteTime > 0)) {
+            player.vy = jumpState.maxJumpForce;
+            player.onGround = false;
+            jumpState.jumpBufferTime = 0;
+            jumpState.coyoteTime = 0;
+        }
+
+        if (keys.jump && player.vy < 0) {
+            jumpState.maxJumpForce = Math.min(jumpState.maxJumpForce, player.vy);
+        }
+    }
+
+    updateTimers(jumpState, delta) {
+        jumpState.coyoteTime = Math.max(0, jumpState.coyoteTime - delta);
+        jumpState.jumpBufferTime = Math.max(0, jumpState.jumpBufferTime - delta);
+    }
+}
+
+class Physics {
+    applyCollision(player, groundY) {
+        if (player.y + player.height >= groundY) {
+            player.y = groundY - player.height;
+            player.vy = 0;
+            player.onGround = true;
+        } else {
+            player.onGround = false;
+        }
+    }
+
+    updateCoyoteTime(jumpState, player, delta) {
+        if (player.onGround) {
+            jumpState.coyoteTime = 100;
+        }
+    }
+}
+
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -20,13 +97,24 @@ export class Game {
             vy: 0,
             width: 50,
             height: 50,
-            speed: 4,
-            jumpForce: -15,
-            onGround: true
+            onGround: false
         };
 
-        this.gravity = 0.6;
-        this.groundY = 350;
+        this.jumpState = {
+            jumpPressed: false,
+            jumpBufferTime: 0,
+            coyoteTime: 0,
+            maxJumpForce: -12
+        };
+
+        this.constants = {
+            gravity: 0.6,
+            groundY: 350,
+            jumpForce: -12
+        };
+
+        this.movement = new PlayerMovement();
+        this.physics = new Physics();
 
         this.setupInput();
     }
@@ -63,34 +151,12 @@ export class Game {
     }
 
     update(delta) {
-
-        // Horizontal movement
-        if (this.keys.left) {
-            this.player.vx = -this.player.speed;
-        } else if (this.keys.right) {
-            this.player.vx = this.player.speed;
-        } else {
-            this.player.vx = 0;
-        }
-
-        this.player.x += this.player.vx;
-
-        // Jump
-        if (this.keys.jump && this.player.onGround) {
-            this.player.vy = this.player.jumpForce;
-            this.player.onGround = false;
-        }
-
-        // Gravity
-        this.player.vy += this.gravity;
-        this.player.y += this.player.vy;
-
-        // Collision with ground
-        if (this.player.y + this.player.height >= this.groundY) {
-            this.player.y = this.groundY - this.player.height;
-            this.player.vy = 0;
-            this.player.onGround = true;
-        }
+        this.movement.applyMovementInput(this.player, this.keys, delta);
+        this.movement.applyJump(this.player, this.keys, this.jumpState, this.constants.jumpForce);
+        this.movement.updateTimers(this.jumpState, delta);
+        this.movement.applyGravity(this.player, this.constants.gravity, delta);
+        this.physics.applyCollision(this.player, this.constants.groundY);
+        this.physics.updateCoyoteTime(this.jumpState, this.player, delta);
     }
 
     render() {
