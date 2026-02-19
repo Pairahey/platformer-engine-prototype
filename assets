@@ -1,4 +1,0 @@
-mkdir assets
-mv hero1.png assets/
-mv hero2.png assets/
-mv hero3.png assets/
