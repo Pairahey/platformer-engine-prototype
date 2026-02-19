@@ -1,4 +1,6 @@
 import { Game } from "./game.js";
 
-const game = new Game();
+const canvas = document.querySelector("canvas");
+const game = new Game(canvas);
+
 game.start();
