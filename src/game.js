@@ -1,8 +1,8 @@
 class PlayerMovement {
     constructor() {
-        this.acceleration = 1.5;
-        this.maxSpeed = 8;
-        this.friction = 0.85;
+        this.acceleration = 1.1;
+        this.maxSpeed = 6.2;
+        this.friction = 0.82;
         this.maxVelocity = 15;
     }
 
@@ -75,6 +75,235 @@ class Physics {
     }
 }
 
+class PlayerVisuals {
+    constructor() {
+        this.states = {
+            idle: "idle",
+            run: "run",
+            jump: "jump",
+            fall: "fall"
+        };
+        this.currentState = this.states.idle;
+        this.runFrameIndex = 0;
+        this.runFrameTimer = 0;
+        this.runFrameDuration = 90;
+        this.facing = 1;
+
+        this.squashTimer = 0;
+        this.squashDuration = 110;
+        this.squashAmount = 0.16;
+
+        this.runCycle = 0;
+        this.bobAmount = 2.5;
+        this.leanAmount = 0.07;
+        this.visualScale = 1.35;
+
+        this.frames = {
+            hero1: this.loadFrame("assets/hero1.png"),
+            hero2: this.loadFrame("assets/hero2.png"),
+            hero3: this.loadFrame("assets/hero3.png")
+        };
+
+        this.runFrames = [this.frames.hero1, this.frames.hero2, this.frames.hero3];
+        this.idleFrame = this.frames.hero1;
+        this.jumpFrame = this.frames.hero2;
+        this.fallFrame = this.frames.hero3;
+    }
+
+    loadFrame(src) {
+        const image = new Image();
+        image.src = src;
+
+        const frame = {
+            image,
+            canvas: null,
+            crop: { x: 0, y: 0, width: 1, height: 1 }
+        };
+
+        image.onload = () => {
+            frame.canvas = this.createCleanFrameCanvas(image);
+            frame.crop = this.findNonBackgroundCrop(frame.canvas) || {
+                x: 0,
+                y: 0,
+                width: image.width,
+                height: image.height
+            };
+        };
+
+        return frame;
+    }
+
+    createCleanFrameCanvas(image) {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0);
+
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = pixels.data;
+        const baseR = data[0];
+        const baseG = data[1];
+        const baseB = data[2];
+        const threshold = 30;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const distance =
+                Math.abs(data[i] - baseR) +
+                Math.abs(data[i + 1] - baseG) +
+                Math.abs(data[i + 2] - baseB);
+
+            if (distance < threshold) {
+                data[i + 3] = 0;
+            }
+        }
+
+        ctx.putImageData(pixels, 0, 0);
+        return canvas;
+    }
+
+    findNonBackgroundCrop(canvas) {
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const { width, height } = canvas;
+        const data = ctx.getImageData(0, 0, width, height).data;
+
+        let minX = width;
+        let minY = height;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] > 0) {
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            return null;
+        }
+
+        return {
+            x: minX,
+            y: minY,
+            width: maxX - minX + 1,
+            height: maxY - minY + 1
+        };
+    }
+
+    update(player, wasOnGround, delta) {
+        this.updateFacing(player);
+        this.updateState(player);
+        this.updateRunAnimation(player, delta);
+        this.updateLandingSquash(player, wasOnGround, delta);
+    }
+
+    updateFacing(player) {
+        if (player.vx > 0.1) this.facing = 1;
+        else if (player.vx < -0.1) this.facing = -1;
+    }
+
+    updateState(player) {
+        if (!player.onGround) {
+            this.currentState = player.vy < 0 ? this.states.jump : this.states.fall;
+            return;
+        }
+
+        if (Math.abs(player.vx) > 0.2) {
+            this.currentState = this.states.run;
+            return;
+        }
+
+        this.currentState = this.states.idle;
+    }
+
+    updateRunAnimation(player, delta) {
+        if (this.currentState !== this.states.run) {
+            this.runFrameIndex = 0;
+            this.runFrameTimer = 0;
+            this.runCycle = 0;
+            return;
+        }
+
+        const speedFactor = Math.min(1, Math.abs(player.vx) / 6);
+        const frameDuration = this.runFrameDuration - speedFactor * 25;
+
+        this.runFrameTimer += delta;
+        if (this.runFrameTimer >= frameDuration) {
+            this.runFrameTimer = 0;
+            this.runFrameIndex = (this.runFrameIndex + 1) % this.runFrames.length;
+        }
+
+        this.runCycle += (delta / 1000) * (6 + speedFactor * 5);
+    }
+
+    updateLandingSquash(player, wasOnGround, delta) {
+        const justLanded = !wasOnGround && player.onGround;
+        if (justLanded) {
+            this.squashTimer = this.squashDuration;
+        }
+
+        if (this.squashTimer > 0) {
+            this.squashTimer = Math.max(0, this.squashTimer - delta);
+        }
+    }
+
+    getCurrentFrame() {
+        if (this.currentState === this.states.run) return this.runFrames[this.runFrameIndex];
+        if (this.currentState === this.states.jump) return this.jumpFrame;
+        if (this.currentState === this.states.fall) return this.fallFrame;
+        return this.idleFrame;
+    }
+
+    draw(ctx, player) {
+        const frame = this.getCurrentFrame();
+        const progress = this.squashDuration === 0 ? 0 : this.squashTimer / this.squashDuration;
+        const squashStrength = progress * this.squashAmount;
+
+        const runWave = this.currentState === this.states.run ? Math.sin(this.runCycle) : 0;
+        const bobOffset = this.currentState === this.states.run ? Math.abs(runWave) * this.bobAmount : 0;
+        const lean = this.currentState === this.states.run ? runWave * this.leanAmount : 0;
+
+        const scaleX = (1 + squashStrength) * this.visualScale;
+        const scaleY = (1 - squashStrength) * this.visualScale;
+
+        const drawX = player.x + player.width / 2;
+        const drawY = player.y + player.height;
+
+        ctx.save();
+        ctx.translate(drawX, drawY + bobOffset);
+        ctx.rotate(lean * this.facing);
+        ctx.scale(this.facing * scaleX, scaleY);
+
+        const source = frame.canvas || frame.image;
+        if (source && frame.image.complete && frame.image.naturalWidth > 0) {
+            const { x, y, width, height } = frame.crop;
+            ctx.drawImage(
+                source,
+                x,
+                y,
+                width,
+                height,
+                -player.width / 2,
+                -player.height,
+                player.width,
+                player.height
+            );
+        } else {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(-player.width / 2, -player.height, player.width, player.height);
+        }
+
+        ctx.restore();
+    }
+}
+
 export class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -115,6 +344,7 @@ export class Game {
 
         this.movement = new PlayerMovement();
         this.physics = new Physics();
+        this.playerVisuals = new PlayerVisuals();
 
         this.setupInput();
     }
@@ -151,12 +381,16 @@ export class Game {
     }
 
     update(delta) {
+        const wasOnGround = this.player.onGround;
+
         this.movement.applyMovementInput(this.player, this.keys, delta);
         this.movement.applyJump(this.player, this.keys, this.jumpState, this.constants.jumpForce);
         this.movement.updateTimers(this.jumpState, delta);
         this.movement.applyGravity(this.player, this.constants.gravity, delta);
         this.physics.applyCollision(this.player, this.constants.groundY);
         this.physics.updateCoyoteTime(this.jumpState, this.player, delta);
+
+        this.playerVisuals.update(this.player, wasOnGround, delta);
     }
 
     render() {
@@ -167,7 +401,6 @@ export class Game {
         this.ctx.fillRect(0, 350, this.canvas.width, 50);
 
         // Player
-        this.ctx.fillStyle = "blue";
-        this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+        this.playerVisuals.draw(this.ctx, this.player);
     }
 }
