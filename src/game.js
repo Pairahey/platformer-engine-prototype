@@ -86,17 +86,25 @@ class PlayerVisuals {
         this.currentState = this.states.idle;
         this.runFrameIndex = 0;
         this.runFrameTimer = 0;
+ codex/enhance-player-animations-and-state-management-6lpoum
         this.runFrameDuration = 90;
+
+        this.runFrameDuration = 110;
+ prototype-v1
         this.facing = 1;
 
         this.squashTimer = 0;
         this.squashDuration = 110;
+ codex/enhance-player-animations-and-state-management-6lpoum
         this.squashAmount = 0.16;
 
         this.runCycle = 0;
         this.bobAmount = 2.5;
         this.leanAmount = 0.07;
         this.visualScale = 1.35;
+
+        this.squashAmount = 0.18;
+prototype-v1
 
         this.frames = {
             hero1: this.loadFrame("assets/hero1.png"),
@@ -200,7 +208,11 @@ class PlayerVisuals {
     update(player, wasOnGround, delta) {
         this.updateFacing(player);
         this.updateState(player);
+ codex/enhance-player-animations-and-state-management-6lpoum
         this.updateRunAnimation(player, delta);
+
+        this.updateRunAnimation(delta);
+ prototype-v1
         this.updateLandingSquash(player, wasOnGround, delta);
     }
 
@@ -223,6 +235,7 @@ class PlayerVisuals {
         this.currentState = this.states.idle;
     }
 
+ codex/enhance-player-animations-and-state-management-6lpoum
     updateRunAnimation(player, delta) {
         if (this.currentState !== this.states.run) {
             this.runFrameIndex = 0;
@@ -241,6 +254,20 @@ class PlayerVisuals {
         }
 
         this.runCycle += (delta / 1000) * (6 + speedFactor * 5);
+
+    updateRunAnimation(delta) {
+        if (this.currentState !== this.states.run) {
+            this.runFrameIndex = 0;
+            this.runFrameTimer = 0;
+            return;
+        }
+
+        this.runFrameTimer += delta;
+        if (this.runFrameTimer >= this.runFrameDuration) {
+            this.runFrameTimer = 0;
+            this.runFrameIndex = (this.runFrameIndex + 1) % this.runFrames.length;
+        }
+prototype-v1
     }
 
     updateLandingSquash(player, wasOnGround, delta) {
@@ -265,6 +292,7 @@ class PlayerVisuals {
         const frame = this.getCurrentFrame();
         const progress = this.squashDuration === 0 ? 0 : this.squashTimer / this.squashDuration;
         const squashStrength = progress * this.squashAmount;
+codex/enhance-player-animations-and-state-management-6lpoum
 
         const runWave = this.currentState === this.states.run ? Math.sin(this.runCycle) : 0;
         const bobOffset = this.currentState === this.states.run ? Math.abs(runWave) * this.bobAmount : 0;
@@ -273,12 +301,20 @@ class PlayerVisuals {
         const scaleX = (1 + squashStrength) * this.visualScale;
         const scaleY = (1 - squashStrength) * this.visualScale;
 
+        const scaleX = 1 + squashStrength;
+        const scaleY = 1 - squashStrength;
+ prototype-v1
+
         const drawX = player.x + player.width / 2;
         const drawY = player.y + player.height;
 
         ctx.save();
+ codex/enhance-player-animations-and-state-management-6lpoum
         ctx.translate(drawX, drawY + bobOffset);
         ctx.rotate(lean * this.facing);
+
+        ctx.translate(drawX, drawY);
+prototype-v1
         ctx.scale(this.facing * scaleX, scaleY);
 
         const source = frame.canvas || frame.image;
