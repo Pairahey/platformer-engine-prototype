@@ -7,17 +7,40 @@ export class Game {
         this.lastTime = 0;
         this.running = false;
 
-        // şimdilik basit player state
+        this.keys = {
+            left: false,
+            right: false,
+            jump: false
+        };
+
         this.player = {
             x: 100,
             y: 250,
             vx: 0,
             vy: 0,
+            speed: 4,
+            jumpForce: -15,
             onGround: true
         };
 
         this.gravity = 0.6;
         this.groundY = 250;
+
+        this.setupInput();
+    }
+
+    setupInput() {
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") this.keys.left = true;
+            if (e.key === "ArrowRight") this.keys.right = true;
+            if (e.key === "ArrowUp") this.keys.jump = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft") this.keys.left = false;
+            if (e.key === "ArrowRight") this.keys.right = false;
+            if (e.key === "ArrowUp") this.keys.jump = false;
+        });
     }
 
     start() {
@@ -38,7 +61,25 @@ export class Game {
     }
 
     update(delta) {
-        // basit gravity
+
+        // Horizontal movement
+        if (this.keys.left) {
+            this.player.vx = -this.player.speed;
+        } else if (this.keys.right) {
+            this.player.vx = this.player.speed;
+        } else {
+            this.player.vx = 0;
+        }
+
+        this.player.x += this.player.vx;
+
+        // Jump
+        if (this.keys.jump && this.player.onGround) {
+            this.player.vy = this.player.jumpForce;
+            this.player.onGround = false;
+        }
+
+        // Gravity
         this.player.vy += this.gravity;
         this.player.y += this.player.vy;
 
@@ -52,11 +93,11 @@ export class Game {
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // zemin
+        // Zemin
         this.ctx.fillStyle = "green";
         this.ctx.fillRect(0, 350, this.canvas.width, 50);
 
-        // geçici mavi karakter
+        // Player
         this.ctx.fillStyle = "blue";
         this.ctx.fillRect(this.player.x, this.player.y, 50, 50);
     }
